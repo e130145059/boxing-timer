@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boxing Timer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0a;
+    color: #fff;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    transition: background 0.4s;
+  }
+
+  body.fighting { background: #0a1a0a; }
+  body.resting  { background: #1a0a0a; }
+  body.warning  { background: #1a1200; }
+
+  h1 {
+    font-size: 1.2rem;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 40px;
+  }
+
+  /* Phase label */
+  #phase {
+    font-size: 1.1rem;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 16px;
+    min-height: 1.4em;
+    transition: color 0.3s;
+  }
+  #phase.fight  { color: #4cff72; }
+  #phase.rest   { color: #ff4c4c; }
+  #phase.ready  { color: #888; }
+
+  /* Big clock */
+  #clock {
+    font-size: clamp(90px, 22vw, 180px);
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    letter-spacing: -4px;
+    transition: color 0.3s;
+    color: #fff;
+  }
+  #clock.warning { color: #ffcc00; }
+  #clock.rest    { color: #ff4c4c; }
+
+  /* Round indicator */
+  #round-info {
+    margin-top: 20px;
+    font-size: 1rem;
+    letter-spacing: 3px;
+    color: #666;
+    text-transform: uppercase;
+  }
+  #round-info span { color: #aaa; }
+
+  /* Round dots */
+  #dots {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 400px;
+  }
+  .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #222;
+    border: 2px solid #333;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .dot.done    { background: #4cff72; border-color: #4cff72; }
+  .dot.current { background: #ffcc00; border-color: #ffcc00; }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 16px;
+    margin-top: 50px;
+  }
+
+  button {
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 16px 32px;
+    transition: transform 0.1s, opacity 0.2s;
+  }
+  button:active { transform: scale(0.96); }
+
+  #btn-start {
+    background: #4cff72;
+    color: #000;
+    min-width: 140px;
+  }
+  #btn-start.paused { background: #ffcc00; }
+
+  #btn-reset {
+    background: #222;
+    color: #aaa;
+    border: 2px solid #333;
+  }
+
+  /* Settings panel */
+  #settings {
+    margin-top: 48px;
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 24px 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px 32px;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .setting label {
+    display: block;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 8px;
+  }
+
+  .setting input {
+    width: 100%;
+    background: #0a0a0a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 8px 4px;
+    outline: none;
+  }
+  .setting input:focus { border-color: #4cff72; }
+
+  #warning-label {
+    margin-top: 32px;
+    font-size: 0.7rem;
+    color: #333;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<h1>Boxing Timer</h1>
+
+<div id="phase" class="ready">Ready</div>
+<div id="clock">3:00</div>
+<div id="round-info">Round <span id="round-num">1</span> / <span id="round-total">12</span></div>
+<div id="dots"></div>
+
+<div class="controls">
+  <button id="btn-start">Start</button>
+  <button id="btn-reset">Reset</button>
+</div>
+
+<div id="settings">
+  <div class="setting">
+    <label>Rounds</label>
+    <input type="number" id="set-rounds" value="12" min="1" max="20">
+  </div>
+  <div class="setting">
+    <label>Round (min)</label>
+    <input type="number" id="set-round-min" value="3" min="1" max="10">
+  </div>
+  <div class="setting">
+    <label>Rest (sec)</label>
+    <input type="number" id="set-rest" value="60" min="5" max="120">
+  </div>
+</div>
+
+<div id="warning-label">Warning bell at 10 seconds</div>
+
+<script>
+// ── Audio ────────────────────────────────────────────────────────────────────
+const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+function bell(freq = 880, duration = 0.8, repeats = 1, gap = 0.3) {
+  for (let i = 0; i < repeats; i++) {
+    const t = ctx.currentTime + i * (duration + gap);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, t);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.5, t + duration);
+    gain.gain.setValueAtTime(0.6, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+    osc.start(t);
+    osc.stop(t + duration);
+  }
+}
+
+function startBell()   { bell(880, 1.0, 1); }   // single ding
+function endBell()     { bell(660, 0.6, 3, 0.2); } // triple ding
+function warningBell() { bell(1100, 0.3, 1); }   // short high ping
+
+// ── State ────────────────────────────────────────────────────────────────────
+let totalRounds, roundSecs, restSecs;
+let currentRound = 1;
+let phase = 'idle';   // idle | fighting | resting | done
+let remaining = 0;
+let interval = null;
+let warnedAt10 = false;
+
+function loadSettings() {
+  totalRounds = Math.max(1, parseInt(document.getElementById('set-rounds').value) || 12);
+  roundSecs   = Math.max(10, (parseInt(document.getElementById('set-round-min').value) || 3) * 60);
+  restSecs    = Math.max(5,  parseInt(document.getElementById('set-rest').value) || 60);
+}
+
+// ── DOM helpers ──────────────────────────────────────────────────────────────
+const clock     = document.getElementById('clock');
+const phaseEl   = document.getElementById('phase');
+const roundNum  = document.getElementById('round-num');
+const roundTot  = document.getElementById('round-total');
+const dotsEl    = document.getElementById('dots');
+const btnStart  = document.getElementById('btn-start');
+const body      = document.body;
+
+function fmt(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function renderDots() {
+  dotsEl.innerHTML = '';
+  for (let i = 1; i <= totalRounds; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    if (i < currentRound) d.classList.add('done');
+    else if (i === currentRound) d.classList.add('current');
+    dotsEl.appendChild(d);
+  }
+}
+
+function updateDisplay() {
+  clock.textContent = fmt(remaining);
+  roundNum.textContent = currentRound;
+  roundTot.textContent = totalRounds;
+  renderDots();
+
+  // clock color / phase label
+  clock.classList.remove('warning', 'rest');
+  body.classList.remove('fighting', 'resting', 'warning');
+  phaseEl.classList.remove('fight', 'rest', 'ready');
+
+  if (phase === 'fighting') {
+    phaseEl.textContent = `Round ${currentRound}`;
+    phaseEl.classList.add('fight');
+    if (remaining <= 10) {
+      clock.classList.add('warning');
+      body.classList.add('warning');
+    } else {
+      body.classList.add('fighting');
+    }
+  } else if (phase === 'resting') {
+    phaseEl.textContent = 'Rest';
+    phaseEl.classList.add('rest');
+    clock.classList.add('rest');
+    body.classList.add('resting');
+  } else if (phase === 'done') {
+    phaseEl.textContent = 'Done!';
+    phaseEl.classList.add('fight');
+  } else {
+    phaseEl.textContent = 'Ready';
+    phaseEl.classList.add('ready');
+  }
+}
+
+// ── Timer logic ──────────────────────────────────────────────────────────────
+function tick() {
+  remaining--;
+
+  if (phase === 'fighting') {
+    if (remaining === 10 && !warnedAt10) {
+      warningBell();
+      warnedAt10 = true;
+    }
+    if (remaining <= 0) {
+      endBell();
+      if (currentRound >= totalRounds) {
+        phase = 'done';
+        remaining = 0;
+        stopTimer();
+        btnStart.textContent = 'Start';
+        btnStart.classList.remove('paused');
+      } else {
+        phase = 'resting';
+        remaining = restSecs;
+        warnedAt10 = false;
+      }
+    }
+  } else if (phase === 'resting') {
+    if (remaining <= 0) {
+      currentRound++;
+      phase = 'fighting';
+      remaining = roundSecs;
+      warnedAt10 = false;
+      startBell();
+    }
+  }
+
+  updateDisplay();
+}
+
+function startTimer() {
+  if (interval) return;
+  interval = setInterval(tick, 1000);
+}
+
+function stopTimer() {
+  clearInterval(interval);
+  interval = null;
+}
+
+// ── Button handlers ──────────────────────────────────────────────────────────
+btnStart.addEventListener('click', () => {
+  // Resume AudioContext on first user gesture
+  if (ctx.state === 'suspended') ctx.resume();
+
+  if (phase === 'done') return;
+
+  if (phase === 'idle') {
+    loadSettings();
+    currentRound = 1;
+    phase = 'fighting';
+    remaining = roundSecs;
+    warnedAt10 = false;
+    updateDisplay();
+    startBell();
+    startTimer();
+    btnStart.textContent = 'Pause';
+    btnStart.classList.remove('paused');
+  } else if (interval) {
+    // Pause
+    stopTimer();
+    btnStart.textContent = 'Resume';
+    btnStart.classList.add('paused');
+  } else {
+    // Resume
+    startTimer();
+    btnStart.textContent = 'Pause';
+    btnStart.classList.remove('paused');
+  }
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  stopTimer();
+  loadSettings();
+  phase = 'idle';
+  currentRound = 1;
+  remaining = roundSecs;
+  warnedAt10 = false;
+  btnStart.textContent = 'Start';
+  btnStart.classList.remove('paused');
+  updateDisplay();
+});
+
+// Settings change resets if idle
+['set-rounds','set-round-min','set-rest'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    if (phase === 'idle') {
+      loadSettings();
+      remaining = roundSecs;
+      updateDisplay();
+    }
+  });
+});
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+loadSettings();
+remaining = roundSecs;
+updateDisplay();
+</script>
+</body>
+</html>
