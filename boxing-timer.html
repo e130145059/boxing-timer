@@ -166,6 +166,77 @@
     letter-spacing: 2px;
     text-transform: uppercase;
   }
+
+  /* Camera */
+  #camera-wrap {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 260px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 2px solid #333;
+    background: #111;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    transition: opacity 0.3s;
+    display: none;
+    z-index: 100;
+    cursor: move;
+    user-select: none;
+  }
+  #camera-wrap.active { display: block; }
+
+  #camera-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: #1a1a1a;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #555;
+  }
+  #camera-header button {
+    background: none;
+    border: none;
+    color: #555;
+    font-size: 1rem;
+    padding: 0 4px;
+    cursor: pointer;
+    letter-spacing: 0;
+  }
+  #camera-header button:hover { color: #fff; }
+
+  #camera-video {
+    width: 100%;
+    display: block;
+    transform: scaleX(-1); /* mirror */
+    background: #000;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+  }
+
+  #camera-error {
+    display: none;
+    padding: 20px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #ff4c4c;
+    letter-spacing: 1px;
+  }
+
+  #btn-camera {
+    background: #1a1a1a;
+    color: #aaa;
+    border: 2px solid #333;
+    font-size: 0.85rem;
+    padding: 14px 20px;
+  }
+  #btn-camera.on {
+    border-color: #4cff72;
+    color: #4cff72;
+  }
 </style>
 </head>
 <body>
@@ -180,6 +251,17 @@
 <div class="controls">
   <button id="btn-start">Start</button>
   <button id="btn-reset">Reset</button>
+  <button id="btn-camera">&#128247; Camera</button>
+</div>
+
+<!-- Draggable camera pip -->
+<div id="camera-wrap">
+  <div id="camera-header">
+    <span>Camera</span>
+    <button id="btn-cam-close" title="Close">&#x2715;</button>
+  </div>
+  <video id="camera-video" autoplay playsinline muted></video>
+  <div id="camera-error">Camera not available</div>
 </div>
 
 <div id="settings">
@@ -397,6 +479,83 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     }
   });
 });
+
+// ── Camera ───────────────────────────────────────────────────────────────────
+const camWrap  = document.getElementById('camera-wrap');
+const camVideo = document.getElementById('camera-video');
+const camError = document.getElementById('camera-error');
+const btnCam   = document.getElementById('btn-camera');
+const btnCamClose = document.getElementById('btn-cam-close');
+let camStream = null;
+
+async function startCamera() {
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    camVideo.srcObject = camStream;
+    camVideo.style.display = 'block';
+    camError.style.display = 'none';
+  } catch {
+    camVideo.style.display = 'none';
+    camError.style.display = 'block';
+  }
+}
+
+function stopCamera() {
+  if (camStream) {
+    camStream.getTracks().forEach(t => t.stop());
+    camStream = null;
+  }
+  camVideo.srcObject = null;
+}
+
+btnCam.addEventListener('click', () => {
+  if (camWrap.classList.contains('active')) {
+    camWrap.classList.remove('active');
+    btnCam.classList.remove('on');
+    stopCamera();
+  } else {
+    camWrap.classList.add('active');
+    btnCam.classList.add('on');
+    startCamera();
+  }
+});
+
+btnCamClose.addEventListener('click', () => {
+  camWrap.classList.remove('active');
+  btnCam.classList.remove('on');
+  stopCamera();
+});
+
+// ── Drag to reposition ───────────────────────────────────────────────────────
+(function makeDraggable(el) {
+  let ox = 0, oy = 0, startX = 0, startY = 0;
+  el.querySelector('#camera-header').addEventListener('mousedown', dragStart);
+  el.querySelector('#camera-header').addEventListener('touchstart', e => dragStart(e.touches[0]), { passive: true });
+
+  function dragStart(e) {
+    startX = e.clientX;
+    startY = e.clientY;
+    const rect = el.getBoundingClientRect();
+    ox = rect.left;
+    oy = rect.top;
+    el.style.right = 'auto';
+    el.style.bottom = 'auto';
+    el.style.left = ox + 'px';
+    el.style.top  = oy + 'px';
+    document.addEventListener('mousemove', dragMove);
+    document.addEventListener('mouseup',   dragEnd);
+    document.addEventListener('touchmove', e => dragMove(e.touches[0]), { passive: true });
+    document.addEventListener('touchend',  dragEnd);
+  }
+  function dragMove(e) {
+    el.style.left = (ox + e.clientX - startX) + 'px';
+    el.style.top  = (oy + e.clientY - startY) + 'px';
+  }
+  function dragEnd() {
+    document.removeEventListener('mousemove', dragMove);
+    document.removeEventListener('mouseup',   dragEnd);
+  }
+})(camWrap);
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 loadSettings();
