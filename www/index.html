@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Boxing Timer">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<title>Boxing Timer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --safe-top:    env(safe-area-inset-top,    0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left:   env(safe-area-inset-left,   0px);
+    --safe-right:  env(safe-area-inset-right,  0px);
+  }
+
+  html, body {
+    height: 100%;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  body {
+    background: #0a0a0a;
+    color: #fff;
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding:
+      calc(var(--safe-top)    + 20px)
+      calc(var(--safe-right)  + 20px)
+      calc(var(--safe-bottom) + 20px)
+      calc(var(--safe-left)   + 20px);
+    transition: background 0.4s;
+  }
+
+  body.fighting { background: #0a1a0a; }
+  body.resting  { background: #1a0a0a; }
+  body.warning  { background: #1a1200; }
+
+  h1 {
+    font-size: clamp(0.75rem, 3vw, 1.1rem);
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: clamp(16px, 4vh, 40px);
+  }
+
+  #phase {
+    font-size: clamp(0.8rem, 3.5vw, 1.1rem);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 10px;
+    min-height: 1.4em;
+    transition: color 0.3s;
+  }
+  #phase.fight { color: #4cff72; }
+  #phase.rest  { color: #ff4c4c; }
+  #phase.ready { color: #888; }
+
+  #clock {
+    font-size: clamp(72px, 20vw, 180px);
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    letter-spacing: -4px;
+    transition: color 0.3s;
+    color: #fff;
+  }
+  #clock.warning { color: #ffcc00; }
+  #clock.rest    { color: #ff4c4c; }
+
+  #round-info {
+    margin-top: clamp(10px, 2vh, 20px);
+    font-size: clamp(0.75rem, 3vw, 1rem);
+    letter-spacing: 3px;
+    color: #666;
+    text-transform: uppercase;
+  }
+  #round-info span { color: #aaa; }
+
+  #dots {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 360px;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #222;
+    border: 2px solid #333;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .dot.done    { background: #4cff72; border-color: #4cff72; }
+  .dot.current { background: #ffcc00; border-color: #ffcc00; }
+
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-top: clamp(24px, 5vh, 50px);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  button {
+    border: none;
+    border-radius: 12px;
+    font-size: clamp(0.85rem, 3.5vw, 1rem);
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    /* min 44pt touch target (Apple HIG) */
+    min-height: 52px;
+    min-width: 52px;
+    padding: 14px 24px;
+    transition: transform 0.1s, opacity 0.2s;
+    -webkit-touch-callout: none;
+  }
+  button:active { transform: scale(0.94); opacity: 0.85; }
+
+  #btn-start {
+    background: #4cff72;
+    color: #000;
+    min-width: 130px;
+  }
+  #btn-start.paused { background: #ffcc00; }
+
+  #btn-reset {
+    background: #1a1a1a;
+    color: #aaa;
+    border: 2px solid #333;
+  }
+
+  #btn-camera {
+    background: #1a1a1a;
+    color: #aaa;
+    border: 2px solid #333;
+    font-size: 1.3rem;
+    padding: 14px 18px;
+    letter-spacing: 0;
+  }
+  #btn-camera.on {
+    border-color: #4cff72;
+    color: #4cff72;
+  }
+
+  /* Settings */
+  #settings {
+    margin-top: clamp(20px, 4vh, 48px);
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 16px;
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px 24px;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .setting label {
+    display: block;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 6px;
+  }
+
+  .setting input {
+    width: 100%;
+    background: #0a0a0a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #fff;
+    font-size: clamp(1rem, 4vw, 1.2rem);
+    font-weight: 700;
+    text-align: center;
+    padding: 10px 4px;
+    outline: none;
+    -webkit-appearance: none;
+    min-height: 44px;
+  }
+  .setting input:focus { border-color: #4cff72; }
+
+  #warning-label {
+    margin-top: clamp(16px, 3vh, 32px);
+    font-size: 0.65rem;
+    color: #333;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* Camera PiP */
+  #camera-wrap {
+    position: fixed;
+    bottom: calc(var(--safe-bottom) + 24px);
+    right: calc(var(--safe-right) + 24px);
+    width: clamp(180px, 35vw, 260px);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 2px solid #333;
+    background: #111;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    display: none;
+    z-index: 100;
+    cursor: move;
+    user-select: none;
+  }
+  #camera-wrap.active { display: block; }
+
+  #camera-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #1a1a1a;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #555;
+    min-height: 44px;
+  }
+  #camera-header button {
+    background: none;
+    border: none;
+    color: #555;
+    font-size: 1.1rem;
+    padding: 4px 8px;
+    cursor: pointer;
+    letter-spacing: 0;
+    min-height: 44px;
+    min-width: 44px;
+  }
+  #camera-header button:hover { color: #fff; }
+
+  #camera-video {
+    width: 100%;
+    display: block;
+    transform: scaleX(-1);
+    background: #000;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+  }
+
+  #camera-error {
+    display: none;
+    padding: 20px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #ff4c4c;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Boxing Timer</h1>
+
+<div id="phase" class="ready">Ready</div>
+<div id="clock">3:00</div>
+<div id="round-info">Round <span id="round-num">1</span> / <span id="round-total">12</span></div>
+<div id="dots"></div>
+
+<div class="controls">
+  <button id="btn-start">Start</button>
+  <button id="btn-reset">Reset</button>
+  <button id="btn-camera" title="Camera">&#128247;</button>
+</div>
+
+<div id="settings">
+  <div class="setting">
+    <label>Rounds</label>
+    <input type="number" id="set-rounds" value="12" min="1" max="20" inputmode="numeric">
+  </div>
+  <div class="setting">
+    <label>Round (min)</label>
+    <input type="number" id="set-round-min" value="3" min="1" max="10" inputmode="numeric">
+  </div>
+  <div class="setting">
+    <label>Rest (sec)</label>
+    <input type="number" id="set-rest" value="60" min="5" max="120" inputmode="numeric">
+  </div>
+</div>
+
+<div id="warning-label">Warning bell at 10 seconds</div>
+
+<!-- Draggable camera PiP -->
+<div id="camera-wrap">
+  <div id="camera-header">
+    <span>Camera</span>
+    <button id="btn-cam-close">&#x2715;</button>
+  </div>
+  <video id="camera-video" autoplay playsinline muted></video>
+  <div id="camera-error">Camera not available</div>
+</div>
+
+<script>
+// ── Audio ────────────────────────────────────────────────────────────────────
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function bell(freq = 880, duration = 0.8, repeats = 1, gap = 0.3) {
+  for (let i = 0; i < repeats; i++) {
+    const t = audioCtx.currentTime + i * (duration + gap);
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, t);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.5, t + duration);
+    gain.gain.setValueAtTime(0.6, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+    osc.start(t);
+    osc.stop(t + duration);
+  }
+}
+
+const startBell   = () => bell(880, 1.0, 1);
+const endBell     = () => bell(660, 0.6, 3, 0.2);
+const warningBell = () => bell(1100, 0.3, 1);
+
+// ── State ────────────────────────────────────────────────────────────────────
+let totalRounds, roundSecs, restSecs;
+let currentRound = 1;
+let phase = 'idle';
+let remaining = 0;
+let interval = null;
+let warnedAt10 = false;
+
+function loadSettings() {
+  totalRounds = Math.max(1,  parseInt(document.getElementById('set-rounds').value)    || 12);
+  roundSecs   = Math.max(10, (parseInt(document.getElementById('set-round-min').value) || 3) * 60);
+  restSecs    = Math.max(5,  parseInt(document.getElementById('set-rest').value)       || 60);
+}
+
+// ── DOM ──────────────────────────────────────────────────────────────────────
+const clock    = document.getElementById('clock');
+const phaseEl  = document.getElementById('phase');
+const roundNum = document.getElementById('round-num');
+const roundTot = document.getElementById('round-total');
+const dotsEl   = document.getElementById('dots');
+const btnStart = document.getElementById('btn-start');
+
+function fmt(secs) {
+  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+}
+
+function renderDots() {
+  dotsEl.innerHTML = '';
+  for (let i = 1; i <= totalRounds; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    if (i < currentRound) d.classList.add('done');
+    else if (i === currentRound) d.classList.add('current');
+    dotsEl.appendChild(d);
+  }
+}
+
+function updateDisplay() {
+  clock.textContent   = fmt(remaining);
+  roundNum.textContent = currentRound;
+  roundTot.textContent = totalRounds;
+  renderDots();
+
+  clock.classList.remove('warning', 'rest');
+  document.body.classList.remove('fighting', 'resting', 'warning');
+  phaseEl.classList.remove('fight', 'rest', 'ready');
+
+  if (phase === 'fighting') {
+    phaseEl.textContent = `Round ${currentRound}`;
+    phaseEl.classList.add('fight');
+    if (remaining <= 10) {
+      clock.classList.add('warning');
+      document.body.classList.add('warning');
+    } else {
+      document.body.classList.add('fighting');
+    }
+  } else if (phase === 'resting') {
+    phaseEl.textContent = 'Rest';
+    phaseEl.classList.add('rest');
+    clock.classList.add('rest');
+    document.body.classList.add('resting');
+  } else if (phase === 'done') {
+    phaseEl.textContent = 'Done!';
+    phaseEl.classList.add('fight');
+  } else {
+    phaseEl.textContent = 'Ready';
+    phaseEl.classList.add('ready');
+  }
+}
+
+// ── Timer ────────────────────────────────────────────────────────────────────
+function tick() {
+  remaining--;
+  if (phase === 'fighting') {
+    if (remaining === 10 && !warnedAt10) { warningBell(); warnedAt10 = true; }
+    if (remaining <= 0) {
+      endBell();
+      if (currentRound >= totalRounds) {
+        phase = 'done'; remaining = 0;
+        stopTimer();
+        btnStart.textContent = 'Start';
+        btnStart.classList.remove('paused');
+      } else {
+        phase = 'resting'; remaining = restSecs; warnedAt10 = false;
+      }
+    }
+  } else if (phase === 'resting') {
+    if (remaining <= 0) {
+      currentRound++; phase = 'fighting';
+      remaining = roundSecs; warnedAt10 = false;
+      startBell();
+    }
+  }
+  updateDisplay();
+}
+
+function startTimer() { if (!interval) interval = setInterval(tick, 1000); }
+function stopTimer()  { clearInterval(interval); interval = null; }
+
+// ── Buttons ──────────────────────────────────────────────────────────────────
+btnStart.addEventListener('click', () => {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (phase === 'done') return;
+  if (phase === 'idle') {
+    loadSettings(); currentRound = 1;
+    phase = 'fighting'; remaining = roundSecs; warnedAt10 = false;
+    updateDisplay(); startBell(); startTimer();
+    btnStart.textContent = 'Pause';
+    btnStart.classList.remove('paused');
+  } else if (interval) {
+    stopTimer();
+    btnStart.textContent = 'Resume';
+    btnStart.classList.add('paused');
+  } else {
+    startTimer();
+    btnStart.textContent = 'Pause';
+    btnStart.classList.remove('paused');
+  }
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  stopTimer(); loadSettings();
+  phase = 'idle'; currentRound = 1;
+  remaining = roundSecs; warnedAt10 = false;
+  btnStart.textContent = 'Start';
+  btnStart.classList.remove('paused');
+  updateDisplay();
+});
+
+['set-rounds','set-round-min','set-rest'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    if (phase === 'idle') { loadSettings(); remaining = roundSecs; updateDisplay(); }
+  });
+});
+
+// ── Camera ───────────────────────────────────────────────────────────────────
+const camWrap     = document.getElementById('camera-wrap');
+const camVideo    = document.getElementById('camera-video');
+const camError    = document.getElementById('camera-error');
+const btnCam      = document.getElementById('btn-camera');
+const btnCamClose = document.getElementById('btn-cam-close');
+let camStream = null;
+
+async function startCamera() {
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    camVideo.srcObject = camStream;
+    camVideo.style.display = 'block';
+    camError.style.display = 'none';
+  } catch {
+    camVideo.style.display = 'none';
+    camError.style.display = 'block';
+  }
+}
+
+function stopCamera() {
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  camVideo.srcObject = null;
+}
+
+function toggleCamera() {
+  if (camWrap.classList.contains('active')) {
+    camWrap.classList.remove('active'); btnCam.classList.remove('on'); stopCamera();
+  } else {
+    camWrap.classList.add('active'); btnCam.classList.add('on'); startCamera();
+  }
+}
+
+btnCam.addEventListener('click', toggleCamera);
+btnCamClose.addEventListener('click', () => {
+  camWrap.classList.remove('active'); btnCam.classList.remove('on'); stopCamera();
+});
+
+// ── Drag PiP ─────────────────────────────────────────────────────────────────
+(function makeDraggable(el) {
+  let ox = 0, oy = 0, sx = 0, sy = 0;
+  const header = el.querySelector('#camera-header');
+
+  function dragStart(cx, cy) {
+    const rect = el.getBoundingClientRect();
+    ox = rect.left; oy = rect.top; sx = cx; sy = cy;
+    el.style.right = 'auto'; el.style.bottom = 'auto';
+    el.style.left = ox + 'px'; el.style.top = oy + 'px';
+  }
+  function dragMove(cx, cy) {
+    el.style.left = (ox + cx - sx) + 'px';
+    el.style.top  = (oy + cy - sy) + 'px';
+  }
+
+  header.addEventListener('mousedown', e => {
+    dragStart(e.clientX, e.clientY);
+    const mm = e2 => dragMove(e2.clientX, e2.clientY);
+    const mu = () => { document.removeEventListener('mousemove', mm); document.removeEventListener('mouseup', mu); };
+    document.addEventListener('mousemove', mm);
+    document.addEventListener('mouseup', mu);
+  });
+
+  header.addEventListener('touchstart', e => {
+    dragStart(e.touches[0].clientX, e.touches[0].clientY);
+    const tm = e2 => dragMove(e2.touches[0].clientX, e2.touches[0].clientY);
+    const te = () => { document.removeEventListener('touchmove', tm); document.removeEventListener('touchend', te); };
+    document.addEventListener('touchmove', tm, { passive: true });
+    document.addEventListener('touchend', te);
+  }, { passive: true });
+})(camWrap);
+
+// ── Service Worker ────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+loadSettings();
+remaining = roundSecs;
+updateDisplay();
+</script>
+</body>
+</html>
