@@ -11,743 +11,709 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <title>Boxing Timer</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --st: env(safe-area-inset-top,    0px);
+  --sb: env(safe-area-inset-bottom, 0px);
+  --sl: env(safe-area-inset-left,   0px);
+  --sr: env(safe-area-inset-right,  0px);
+}
+html, body { height:100%; overscroll-behavior:none; -webkit-user-select:none; user-select:none; }
 
-  :root {
-    --safe-top:    env(safe-area-inset-top,    0px);
-    --safe-bottom: env(safe-area-inset-bottom, 0px);
-    --safe-left:   env(safe-area-inset-left,   0px);
-    --safe-right:  env(safe-area-inset-right,  0px);
-  }
+/* ── HOME SCREEN ────────────────────────────────────────────────────── */
+#home-screen {
+  background: #0a0a0a;
+  color: #fff;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--st)+20px) calc(var(--sr)+20px) calc(var(--sb)+20px) calc(var(--sl)+20px);
+  transition: background 0.4s;
+}
+#home-screen.fighting { background: #0a1a0a; }
+#home-screen.resting  { background: #1a0a0a; }
+#home-screen.warning  { background: #1a1200; }
 
-  html, body {
-    height: 100%;
-    overscroll-behavior: none;
-    -webkit-user-select: none;
-    user-select: none;
-  }
+h1 {
+  font-size: clamp(.75rem,3vw,1.1rem);
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: #555;
+  margin-bottom: clamp(16px,4vh,40px);
+}
+#phase {
+  font-size: clamp(.8rem,3.5vw,1.1rem);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 10px;
+  min-height: 1.4em;
+  transition: color .3s;
+}
+#phase.fight { color:#4cff72; }
+#phase.rest  { color:#ff4c4c; }
+#phase.ready { color:#888; }
 
-  body {
-    background: #0a0a0a;
-    color: #fff;
-    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
-    min-height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding:
-      calc(var(--safe-top)    + 20px)
-      calc(var(--safe-right)  + 20px)
-      calc(var(--safe-bottom) + 20px)
-      calc(var(--safe-left)   + 20px);
-    transition: background 0.4s;
-  }
+#clock {
+  font-size: clamp(72px,20vw,180px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -4px;
+  transition: color .3s;
+  color: #fff;
+}
+#clock.warning { color:#ffcc00; }
+#clock.rest    { color:#ff4c4c; }
 
-  body.fighting { background: #0a1a0a; }
-  body.resting  { background: #1a0a0a; }
-  body.warning  { background: #1a1200; }
+#round-info {
+  margin-top: clamp(10px,2vh,20px);
+  font-size: clamp(.75rem,3vw,1rem);
+  letter-spacing: 3px;
+  color: #666;
+  text-transform: uppercase;
+}
+#round-info span { color:#aaa; }
 
-  h1 {
-    font-size: clamp(0.75rem, 3vw, 1.1rem);
-    letter-spacing: 6px;
-    text-transform: uppercase;
-    color: #555;
-    margin-bottom: clamp(16px, 4vh, 40px);
-  }
+#dots {
+  display:flex; gap:8px; margin-top:14px;
+  flex-wrap:wrap; justify-content:center; max-width:360px;
+}
+.dot {
+  width:10px; height:10px; border-radius:50%;
+  background:#222; border:2px solid #333;
+  transition: background .3s, border-color .3s;
+}
+.dot.done    { background:#4cff72; border-color:#4cff72; }
+.dot.current { background:#ffcc00; border-color:#ffcc00; }
 
-  #phase {
-    font-size: clamp(0.8rem, 3.5vw, 1.1rem);
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    font-weight: 700;
-    margin-bottom: 10px;
-    min-height: 1.4em;
-    transition: color 0.3s;
-  }
-  #phase.fight { color: #4cff72; }
-  #phase.rest  { color: #ff4c4c; }
-  #phase.ready { color: #888; }
+.controls {
+  display:flex; gap:12px;
+  margin-top: clamp(24px,5vh,50px);
+  flex-wrap:wrap; justify-content:center;
+}
+button {
+  border:none; border-radius:12px;
+  font-size: clamp(.85rem,3.5vw,1rem);
+  font-weight:700; letter-spacing:2px; text-transform:uppercase;
+  cursor:pointer; min-height:52px; min-width:52px;
+  padding:14px 24px;
+  transition: transform .1s, opacity .2s;
+  -webkit-touch-callout:none;
+}
+button:active { transform:scale(.94); opacity:.85; }
 
-  #clock {
-    font-size: clamp(72px, 20vw, 180px);
-    font-weight: 900;
-    font-variant-numeric: tabular-nums;
-    line-height: 1;
-    letter-spacing: -4px;
-    transition: color 0.3s;
-    color: #fff;
-  }
-  #clock.warning { color: #ffcc00; }
-  #clock.rest    { color: #ff4c4c; }
+#btn-start { background:#4cff72; color:#000; min-width:130px; }
+#btn-start.paused { background:#ffcc00; }
+#btn-reset { background:#1a1a1a; color:#aaa; border:2px solid #333; }
+#btn-cam-toggle {
+  background:#1a1a1a; color:#aaa; border:2px solid #333;
+  font-size:1.1rem; padding:14px 18px; letter-spacing:0;
+}
+#btn-cam-toggle.on { border-color:#4cff72; color:#4cff72; }
 
-  #round-info {
-    margin-top: clamp(10px, 2vh, 20px);
-    font-size: clamp(0.75rem, 3vw, 1rem);
-    letter-spacing: 3px;
-    color: #666;
-    text-transform: uppercase;
-  }
-  #round-info span { color: #aaa; }
+#settings {
+  margin-top: clamp(20px,4vh,48px);
+  background:#111; border:1px solid #222; border-radius:16px;
+  padding:20px 24px;
+  display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px 24px;
+  width:100%; max-width:420px;
+}
+.setting label {
+  display:block; font-size:.65rem; letter-spacing:2px;
+  text-transform:uppercase; color:#555; margin-bottom:6px;
+}
+.setting input {
+  width:100%; background:#0a0a0a; border:1px solid #333; border-radius:8px;
+  color:#fff; font-size:clamp(1rem,4vw,1.2rem); font-weight:700;
+  text-align:center; padding:10px 4px; outline:none;
+  -webkit-appearance:none; min-height:44px;
+}
+.setting input:focus { border-color:#4cff72; }
+#warning-label {
+  margin-top: clamp(16px,3vh,32px);
+  font-size:.65rem; color:#333; letter-spacing:2px; text-transform:uppercase;
+}
 
-  #dots {
-    display: flex;
-    gap: 8px;
-    margin-top: 14px;
-    flex-wrap: wrap;
-    justify-content: center;
-    max-width: 360px;
-  }
-  .dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #222;
-    border: 2px solid #333;
-    transition: background 0.3s, border-color 0.3s;
-  }
-  .dot.done    { background: #4cff72; border-color: #4cff72; }
-  .dot.current { background: #ffcc00; border-color: #ffcc00; }
+/* ── CAM SCREEN ─────────────────────────────────────────────────────── */
+#cam-screen {
+  position:fixed; inset:0; z-index:10;
+  background:#000;
+  display:flex; flex-direction:column;
+}
+#cam-screen.hidden { display:none; }
 
-  .controls {
-    display: flex;
-    gap: 12px;
-    margin-top: clamp(24px, 5vh, 50px);
-    flex-wrap: wrap;
-    justify-content: center;
-  }
+#cam-video {
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit:cover;
+  transform: scaleX(-1);
+}
 
-  button {
-    border: none;
-    border-radius: 12px;
-    font-size: clamp(0.85rem, 3.5vw, 1rem);
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    cursor: pointer;
-    /* min 44pt touch target (Apple HIG) */
-    min-height: 52px;
-    min-width: 52px;
-    padding: 14px 24px;
-    transition: transform 0.1s, opacity 0.2s;
-    -webkit-touch-callout: none;
-  }
-  button:active { transform: scale(0.94); opacity: 0.85; }
+/* gradient bars so text is readable over any background */
+#cam-top {
+  position:relative; z-index:2;
+  padding: calc(var(--st)+12px) calc(var(--sr)+16px) 16px calc(var(--sl)+16px);
+  background: linear-gradient(to bottom, rgba(0,0,0,.75) 0%, transparent 100%);
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+}
+#cam-bottom {
+  position:relative; z-index:2; margin-top:auto;
+  padding: 16px calc(var(--sr)+16px) calc(var(--sb)+24px) calc(var(--sl)+16px);
+  background: linear-gradient(to top, rgba(0,0,0,.8) 0%, transparent 100%);
+  display:flex; align-items:center; justify-content:space-around;
+}
 
-  #btn-start {
-    background: #4cff72;
-    color: #000;
-    min-width: 130px;
-  }
-  #btn-start.paused { background: #ffcc00; }
+/* center watermark */
+#cam-center {
+  position:absolute; z-index:2;
+  top:50%; left:50%; transform:translate(-50%,-50%);
+  text-align:center; pointer-events:none;
+}
+#cam-phase-label {
+  font-size: clamp(.7rem,3vw,1rem);
+  letter-spacing:4px; text-transform:uppercase; font-weight:700;
+  color:rgba(255,255,255,.8);
+  text-shadow: 0 2px 8px rgba(0,0,0,.9);
+  margin-bottom:4px;
+}
+#cam-clock {
+  font-size: clamp(64px,18vw,140px);
+  font-weight:900; font-variant-numeric:tabular-nums;
+  line-height:1; letter-spacing:-4px;
+  color:#fff;
+  text-shadow: 0 4px 20px rgba(0,0,0,.9), 0 0 40px rgba(0,0,0,.6);
+  transition: color .3s;
+}
+#cam-clock.warning { color:#ffcc00; }
+#cam-clock.rest    { color:#ff4c4c; }
 
-  #btn-reset {
-    background: #1a1a1a;
-    color: #aaa;
-    border: 2px solid #333;
-  }
+/* round dots on cam screen */
+#cam-dots {
+  display:flex; gap:6px; justify-content:center; margin-top:10px; flex-wrap:wrap;
+}
 
-  #btn-camera {
-    background: #1a1a1a;
-    color: #aaa;
-    border: 2px solid #333;
-    font-size: 1.1rem;
-    padding: 14px 18px;
-    letter-spacing: 0;
-  }
-  #btn-camera.on { border-color: #4cff72; color: #4cff72; }
+/* top bar elements */
+#btn-home {
+  background:rgba(255,255,255,.12); color:#fff;
+  border:1px solid rgba(255,255,255,.25); border-radius:10px;
+  font-size:.75rem; padding:10px 16px; min-height:44px; letter-spacing:1px;
+  backdrop-filter: blur(8px);
+}
+#cam-round-label {
+  font-size:.75rem; letter-spacing:3px; text-transform:uppercase;
+  color:rgba(255,255,255,.7); text-shadow:0 1px 6px rgba(0,0,0,.8);
+}
+#rec-indicator {
+  display:none; align-items:center; gap:5px;
+  font-size:.7rem; letter-spacing:1px; color:#ff4c4c; font-weight:700;
+  text-shadow:0 1px 6px rgba(0,0,0,.8);
+}
+#rec-indicator.active { display:flex; }
+.rec-dot {
+  width:8px; height:8px; border-radius:50%; background:#ff4c4c;
+  animation: blink 1s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.1} }
 
-  /* Settings */
-  #settings {
-    margin-top: clamp(20px, 4vh, 48px);
-    background: #111;
-    border: 1px solid #222;
-    border-radius: 16px;
-    padding: 20px 24px;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 16px 24px;
-    width: 100%;
-    max-width: 420px;
-  }
+/* bottom bar buttons */
+.cam-btn {
+  background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.25);
+  border-radius:50%; width:64px; height:64px;
+  font-size:1.4rem; color:#fff; display:flex;
+  align-items:center; justify-content:center;
+  cursor:pointer; backdrop-filter:blur(8px);
+  transition: transform .1s, background .2s;
+  padding:0; min-width:unset; min-height:unset; letter-spacing:0;
+}
+.cam-btn:active { transform:scale(.9); }
+#btn-cam-pause.active { background:rgba(76,255,114,.25); border-color:#4cff72; }
+#btn-cam-rec { font-size:1rem; }
+#btn-cam-rec.recording { background:rgba(255,76,76,.3); border-color:#ff4c4c; }
 
-  .setting label {
-    display: block;
-    font-size: 0.65rem;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: #555;
-    margin-bottom: 6px;
-  }
+/* ── REPLAY MODAL ───────────────────────────────────────────────────── */
+#replay-modal {
+  position:fixed; inset:0; z-index:20;
+  background:#000;
+  display:flex; flex-direction:column;
+}
+#replay-modal.hidden { display:none; }
 
-  .setting input {
-    width: 100%;
-    background: #0a0a0a;
-    border: 1px solid #333;
-    border-radius: 8px;
-    color: #fff;
-    font-size: clamp(1rem, 4vw, 1.2rem);
-    font-weight: 700;
-    text-align: center;
-    padding: 10px 4px;
-    outline: none;
-    -webkit-appearance: none;
-    min-height: 44px;
-  }
-  .setting input:focus { border-color: #4cff72; }
+#replay-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding: calc(var(--st)+12px) calc(var(--sr)+16px) 12px calc(var(--sl)+16px);
+  background:#111; border-bottom:1px solid #222;
+  gap:8px;
+}
+#replay-header span {
+  font-size:.75rem; letter-spacing:3px; text-transform:uppercase; color:#aaa;
+}
+#btn-replay-back {
+  background:none; border:none; color:#4cff72;
+  font-size:.85rem; padding:8px 4px; letter-spacing:1px; min-height:44px;
+}
+#btn-replay-save {
+  background:#4cff72; color:#000; border:none;
+  font-size:.75rem; padding:10px 16px; border-radius:8px; min-height:44px;
+  letter-spacing:1px;
+}
 
-  #warning-label {
-    margin-top: clamp(16px, 3vh, 32px);
-    font-size: 0.65rem;
-    color: #333;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-  }
+#replay-video {
+  width:100%; flex:1; object-fit:contain; background:#000; min-height:0;
+}
 
-  /* Camera PiP */
-  #camera-wrap {
-    position: fixed;
-    bottom: calc(var(--safe-bottom) + 24px);
-    right: calc(var(--safe-right) + 24px);
-    width: clamp(180px, 35vw, 260px);
-    border-radius: 14px;
-    overflow: hidden;
-    border: 2px solid #333;
-    background: #111;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-    display: none;
-    z-index: 100;
-    cursor: move;
-    user-select: none;
-  }
-  #camera-wrap.active { display: block; }
-
-  #camera-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    background: #1a1a1a;
-    font-size: 0.65rem;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: #555;
-    min-height: 44px;
-  }
-  #camera-header button {
-    background: none;
-    border: none;
-    color: #555;
-    font-size: 1.1rem;
-    padding: 4px 8px;
-    cursor: pointer;
-    letter-spacing: 0;
-    min-height: 44px;
-    min-width: 44px;
-  }
-  #camera-header button:hover { color: #fff; }
-
-  #cam-video-wrap { position: relative; }
-
-  #camera-video {
-    width: 100%;
-    display: block;
-    transform: scaleX(-1);
-    background: #000;
-    aspect-ratio: 4/3;
-    object-fit: cover;
-  }
-
-  #cam-watermark {
-    position: absolute;
-    bottom: 10px;
-    left: 0; right: 0;
-    text-align: center;
-    pointer-events: none;
-    font-weight: 900;
-    font-variant-numeric: tabular-nums;
-    font-size: clamp(1.4rem, 8vw, 2.2rem);
-    color: rgba(255,255,255,0.9);
-    text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8);
-    letter-spacing: -1px;
-    line-height: 1.1;
-  }
-  #cam-watermark .wm-round {
-    display: block;
-    font-size: 0.45em;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    opacity: 0.75;
-    font-weight: 700;
-  }
-
-  #camera-error {
-    display: none;
-    padding: 20px;
-    text-align: center;
-    font-size: 0.75rem;
-    color: #ff4c4c;
-    letter-spacing: 1px;
-  }
-
-  /* Recording indicator */
-  #rec-indicator {
-    display: none;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.65rem;
-    letter-spacing: 1px;
-    color: #ff4c4c;
-    font-weight: 700;
-  }
-  #rec-indicator.active { display: flex; }
-  .rec-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: #ff4c4c;
-    animation: blink 1s infinite;
-  }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.1} }
-
-  #btn-rec {
-    background: none;
-    border: none;
-    color: #555;
-    font-size: 1rem;
-    padding: 4px 8px;
-    cursor: pointer;
-    letter-spacing: 0;
-    min-height: 44px;
-    min-width: 44px;
-    transition: color 0.2s;
-  }
-  #btn-rec:hover { color: #ff4c4c; }
-  #btn-rec.recording { color: #ff4c4c; }
-
-  /* Recordings list — inside camera panel */
-  #recordings-list {
-    max-height: 150px;
-    overflow-y: auto;
-    display: none;
-  }
-  #recordings-list.visible { display: block; }
-  #recordings-header {
-    padding: 6px 12px;
-    background: #141414;
-    font-size: 0.6rem;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: #444;
-    border-top: 1px solid #222;
-    display: none;
-  }
-  #recordings-header.visible { display: block; }
-  .rec-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    border-top: 1px solid #1e1e1e;
-    font-size: 0.7rem;
-    color: #aaa;
-    letter-spacing: 1px;
-  }
-  .rec-item a {
-    color: #4cff72;
-    text-decoration: none;
-    font-weight: 700;
-    font-size: 0.65rem;
-    letter-spacing: 1px;
-    padding: 4px 8px;
-    border: 1px solid #4cff72;
-    border-radius: 6px;
-  }
+#clips-list {
+  background:#0a0a0a; max-height:35vh; overflow-y:auto;
+  border-top:1px solid #1a1a1a;
+}
+.clip-item {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 16px; border-bottom:1px solid #141414;
+  cursor:pointer;
+}
+.clip-item:active { background:#111; }
+.clip-thumb {
+  width:56px; height:40px; border-radius:6px;
+  background:#222; object-fit:cover; flex-shrink:0;
+}
+.clip-info { flex:1; }
+.clip-title { font-size:.8rem; color:#ccc; letter-spacing:1px; }
+.clip-duration { font-size:.65rem; color:#555; letter-spacing:1px; margin-top:2px; }
+.clip-playing { color:#4cff72; }
 </style>
 </head>
 <body>
 
-<h1>Boxing Timer</h1>
-
-<div id="phase" class="ready">Ready</div>
-<div id="clock">3:00</div>
-<div id="round-info">Round <span id="round-num">1</span> / <span id="round-total">12</span></div>
-<div id="dots"></div>
-
-<div class="controls">
-  <button id="btn-start">Start</button>
-  <button id="btn-reset">Reset</button>
-  <button id="btn-camera" class="on" title="Toggle camera">&#128247;</button>
-</div>
-
-<div id="settings">
-  <div class="setting">
-    <label>Rounds</label>
-    <input type="number" id="set-rounds" value="12" min="1" max="20" inputmode="numeric">
+<!-- ── HOME SCREEN ──────────────────────────────────────────────────── -->
+<div id="home-screen">
+  <h1>Boxing Timer</h1>
+  <div id="phase" class="ready">Ready</div>
+  <div id="clock">3:00</div>
+  <div id="round-info">Round <span id="round-num">1</span> / <span id="round-total">12</span></div>
+  <div id="dots"></div>
+  <div class="controls">
+    <button id="btn-start">Start</button>
+    <button id="btn-reset">Reset</button>
+    <button id="btn-cam-toggle" class="on">&#128247;</button>
   </div>
-  <div class="setting">
-    <label>Round (min)</label>
-    <input type="number" id="set-round-min" value="3" min="1" max="10" inputmode="numeric">
-  </div>
-  <div class="setting">
-    <label>Rest (sec)</label>
-    <input type="number" id="set-rest" value="60" min="5" max="120" inputmode="numeric">
-  </div>
-</div>
-
-<div id="warning-label">Warning bell at 10 seconds</div>
-
-<!-- Draggable camera PiP -->
-<div id="camera-wrap">
-  <div id="camera-header">
-    <div id="rec-indicator"><div class="rec-dot"></div><span id="rec-time">0:00</span></div>
-    <span id="cam-label">Camera</span>
-    <div style="display:flex;align-items:center">
-      <button id="btn-rec" title="Record">&#9210;</button>
-      <button id="btn-cam-close" title="Disable camera">&#x2715;</button>
+  <div id="settings">
+    <div class="setting">
+      <label>Rounds</label>
+      <input type="number" id="set-rounds" value="12" min="1" max="20" inputmode="numeric">
+    </div>
+    <div class="setting">
+      <label>Round (min)</label>
+      <input type="number" id="set-round-min" value="3" min="1" max="10" inputmode="numeric">
+    </div>
+    <div class="setting">
+      <label>Rest (sec)</label>
+      <input type="number" id="set-rest" value="60" min="5" max="120" inputmode="numeric">
     </div>
   </div>
-  <div id="cam-video-wrap">
-    <video id="camera-video" autoplay playsinline muted></video>
-    <div id="cam-watermark"><span class="wm-round">Ready</span>0:00</div>
+  <div id="warning-label">Warning bell at 10 seconds</div>
+</div>
+
+<!-- ── CAM SCREEN ───────────────────────────────────────────────────── -->
+<div id="cam-screen" class="hidden">
+  <video id="cam-video" autoplay playsinline muted></video>
+
+  <div id="cam-top">
+    <button id="btn-home">&#8592; Home</button>
+    <div id="cam-round-label">Round 1 / 12</div>
+    <div id="rec-indicator"><div class="rec-dot"></div><span id="rec-time">0:00</span></div>
   </div>
-  <div id="camera-error">Camera not available</div>
-  <div id="recordings-header">Clips</div>
-  <div id="recordings-list"></div>
+
+  <div id="cam-center">
+    <div id="cam-phase-label">Ready</div>
+    <div id="cam-clock">3:00</div>
+    <div id="cam-dots"></div>
+  </div>
+
+  <div id="cam-bottom">
+    <button class="cam-btn" id="btn-cam-clips" title="Clips">&#127916;</button>
+    <button class="cam-btn" id="btn-cam-pause" title="Pause">&#9646;&#9646;</button>
+    <button class="cam-btn" id="btn-cam-rec" title="Record">&#9210;</button>
+  </div>
+</div>
+
+<!-- ── REPLAY MODAL ─────────────────────────────────────────────────── -->
+<div id="replay-modal" class="hidden">
+  <div id="replay-header">
+    <button id="btn-replay-back">&#8592; Back</button>
+    <span id="replay-title">Clip 1</span>
+    <button id="btn-replay-save">&#8659; Save</button>
+  </div>
+  <video id="replay-video" controls playsinline></video>
+  <div id="clips-list"></div>
 </div>
 
 <script>
-// ── Audio ────────────────────────────────────────────────────────────────────
+// ── Audio ─────────────────────────────────────────────────────────────────────
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-function bell(freq = 880, duration = 0.8, repeats = 1, gap = 0.3) {
-  for (let i = 0; i < repeats; i++) {
-    const t = audioCtx.currentTime + i * (duration + gap);
-    const osc  = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, t);
-    osc.frequency.exponentialRampToValueAtTime(freq * 0.5, t + duration);
-    gain.gain.setValueAtTime(0.6, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-    osc.start(t);
-    osc.stop(t + duration);
+function bell(freq=880, dur=0.8, reps=1, gap=0.3) {
+  for (let i=0;i<reps;i++) {
+    const t = audioCtx.currentTime + i*(dur+gap);
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type='sine';
+    o.frequency.setValueAtTime(freq,t);
+    o.frequency.exponentialRampToValueAtTime(freq*.5,t+dur);
+    g.gain.setValueAtTime(.6,t);
+    g.gain.exponentialRampToValueAtTime(.001,t+dur);
+    o.start(t); o.stop(t+dur);
   }
 }
+const startBell   = ()=>bell(880,1.0,1);
+const endBell     = ()=>bell(660,.6,3,.2);
+const warningBell = ()=>bell(1100,.3,1);
 
-const startBell   = () => bell(880, 1.0, 1);
-const endBell     = () => bell(660, 0.6, 3, 0.2);
-const warningBell = () => bell(1100, 0.3, 1);
-
-// ── State ────────────────────────────────────────────────────────────────────
+// ── Timer state ───────────────────────────────────────────────────────────────
 let totalRounds, roundSecs, restSecs;
-let currentRound = 1;
-let phase = 'idle';
-let remaining = 0;
-let interval = null;
-let warnedAt10 = false;
+let currentRound=1, phase='idle', remaining=0;
+let interval=null, warnedAt10=false;
 
 function loadSettings() {
-  totalRounds = Math.max(1,  parseInt(document.getElementById('set-rounds').value)    || 12);
-  roundSecs   = Math.max(10, (parseInt(document.getElementById('set-round-min').value) || 3) * 60);
-  restSecs    = Math.max(5,  parseInt(document.getElementById('set-rest').value)       || 60);
+  totalRounds = Math.max(1,  parseInt(document.getElementById('set-rounds').value)||12);
+  roundSecs   = Math.max(10,(parseInt(document.getElementById('set-round-min').value)||3)*60);
+  restSecs    = Math.max(5,  parseInt(document.getElementById('set-rest').value)||60);
 }
+function fmt(s){ return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
 
-// ── DOM ──────────────────────────────────────────────────────────────────────
-const clock    = document.getElementById('clock');
-const phaseEl  = document.getElementById('phase');
-const roundNum = document.getElementById('round-num');
-const roundTot = document.getElementById('round-total');
-const dotsEl   = document.getElementById('dots');
-const btnStart = document.getElementById('btn-start');
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const homeScreen  = document.getElementById('home-screen');
+const camScreen   = document.getElementById('cam-screen');
+const replayModal = document.getElementById('replay-modal');
 
-function fmt(secs) {
-  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
-}
+const clockEl    = document.getElementById('clock');
+const phaseEl    = document.getElementById('phase');
+const roundNum   = document.getElementById('round-num');
+const roundTot   = document.getElementById('round-total');
+const dotsEl     = document.getElementById('dots');
+const btnStart   = document.getElementById('btn-start');
 
-function renderDots() {
-  dotsEl.innerHTML = '';
-  for (let i = 1; i <= totalRounds; i++) {
-    const d = document.createElement('div');
-    d.className = 'dot';
-    if (i < currentRound) d.classList.add('done');
-    else if (i === currentRound) d.classList.add('current');
-    dotsEl.appendChild(d);
+const camClock      = document.getElementById('cam-clock');
+const camPhaseLabel = document.getElementById('cam-phase-label');
+const camRoundLabel = document.getElementById('cam-round-label');
+const camDotsEl     = document.getElementById('cam-dots');
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderDots(container, count, current) {
+  container.innerHTML='';
+  for(let i=1;i<=count;i++){
+    const d=document.createElement('div');
+    d.className='dot';
+    if(i<current) d.classList.add('done');
+    else if(i===current) d.classList.add('current');
+    container.appendChild(d);
   }
 }
 
 function updateDisplay() {
-  clock.textContent    = fmt(remaining);
-  roundNum.textContent = currentRound;
-  roundTot.textContent = totalRounds;
-  renderDots();
+  const t = fmt(remaining);
+  clockEl.textContent    = t;
+  camClock.textContent   = t;
+  roundNum.textContent   = currentRound;
+  roundTot.textContent   = totalRounds;
+  camRoundLabel.textContent = `Round ${currentRound} / ${totalRounds}`;
+  renderDots(dotsEl,    totalRounds, currentRound);
+  renderDots(camDotsEl, totalRounds, currentRound);
 
-  const wm = document.getElementById('cam-watermark');
-  if (wm) {
-    const label = phase === 'fighting' ? `Round ${currentRound}` : phase === 'resting' ? 'Rest' : phase === 'done' ? 'Done' : 'Ready';
-    wm.innerHTML = `<span class="wm-round">${label}</span>${fmt(remaining)}`;
-  }
+  let phaseText='Ready', phaseClass='ready';
+  clockEl.classList.remove('warning','rest');
+  camClock.classList.remove('warning','rest');
+  homeScreen.classList.remove('fighting','resting','warning');
+  phaseEl.classList.remove('fight','rest','ready');
 
-  clock.classList.remove('warning', 'rest');
-  document.body.classList.remove('fighting', 'resting', 'warning');
-  phaseEl.classList.remove('fight', 'rest', 'ready');
-
-  if (phase === 'fighting') {
-    phaseEl.textContent = `Round ${currentRound}`;
-    phaseEl.classList.add('fight');
-    if (remaining <= 10) {
-      clock.classList.add('warning');
-      document.body.classList.add('warning');
+  if(phase==='fighting'){
+    phaseText=`Round ${currentRound}`; phaseClass='fight';
+    if(remaining<=10){
+      clockEl.classList.add('warning'); camClock.classList.add('warning');
+      homeScreen.classList.add('warning');
     } else {
-      document.body.classList.add('fighting');
+      homeScreen.classList.add('fighting');
     }
-  } else if (phase === 'resting') {
-    phaseEl.textContent = 'Rest';
-    phaseEl.classList.add('rest');
-    clock.classList.add('rest');
-    document.body.classList.add('resting');
-  } else if (phase === 'done') {
-    phaseEl.textContent = 'Done!';
-    phaseEl.classList.add('fight');
-  } else {
-    phaseEl.textContent = 'Ready';
-    phaseEl.classList.add('ready');
+  } else if(phase==='resting'){
+    phaseText='Rest'; phaseClass='rest';
+    clockEl.classList.add('rest'); camClock.classList.add('rest');
+    homeScreen.classList.add('resting');
+  } else if(phase==='done'){
+    phaseText='Done!'; phaseClass='fight';
   }
+
+  phaseEl.textContent      = phaseText;
+  phaseEl.classList.add(phaseClass);
+  camPhaseLabel.textContent = phaseText;
 }
 
-// ── Timer ────────────────────────────────────────────────────────────────────
+// ── Timer ─────────────────────────────────────────────────────────────────────
 function tick() {
   remaining--;
-  if (phase === 'fighting') {
-    if (remaining === 10 && !warnedAt10) { warningBell(); warnedAt10 = true; }
-    if (remaining <= 0) {
+  if(phase==='fighting'){
+    if(remaining===10&&!warnedAt10){ warningBell(); warnedAt10=true; }
+    if(remaining<=0){
       endBell();
-      if (currentRound >= totalRounds) {
-        phase = 'done'; remaining = 0;
-        stopTimer();
-        btnStart.textContent = 'Start';
-        btnStart.classList.remove('paused');
+      if(currentRound>=totalRounds){
+        phase='done'; remaining=0; stopTimer();
+        btnStart.textContent='Start'; btnStart.classList.remove('paused');
+        document.getElementById('btn-cam-pause').classList.remove('active');
+        returnHome();
       } else {
-        phase = 'resting'; remaining = restSecs; warnedAt10 = false;
+        phase='resting'; remaining=restSecs; warnedAt10=false;
       }
     }
-  } else if (phase === 'resting') {
-    if (remaining <= 0) {
-      currentRound++; phase = 'fighting';
-      remaining = roundSecs; warnedAt10 = false;
-      startBell();
+  } else if(phase==='resting'){
+    if(remaining<=0){
+      currentRound++; phase='fighting'; remaining=roundSecs; warnedAt10=false; startBell();
     }
   }
   updateDisplay();
 }
+function startTimer(){ if(!interval) interval=setInterval(tick,1000); }
+function stopTimer() { clearInterval(interval); interval=null; }
 
-function startTimer() { if (!interval) interval = setInterval(tick, 1000); }
-function stopTimer()  { clearInterval(interval); interval = null; }
+// ── Screen switching ──────────────────────────────────────────────────────────
+let camStream=null, camEnabled=true;
 
-// ── Buttons ──────────────────────────────────────────────────────────────────
-btnStart.addEventListener('click', () => {
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  if (phase === 'done') return;
-  if (phase === 'idle') {
-    loadSettings(); currentRound = 1;
-    phase = 'fighting'; remaining = roundSecs; warnedAt10 = false;
+async function ensureCamera() {
+  if(camStream) return true;
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:true});
+    document.getElementById('cam-video').srcObject = camStream;
+    return true;
+  } catch { return false; }
+}
+
+function showCamScreen() {
+  homeScreen.classList.add('hidden');
+  // hide home without removing from layout (we just use display toggling via class)
+  homeScreen.style.display='none';
+  camScreen.classList.remove('hidden');
+}
+
+function returnHome() {
+  stopRecording();
+  camScreen.classList.add('hidden');
+  homeScreen.style.display='';
+  updateDisplay();
+}
+
+function stopCameraStream() {
+  stopRecording();
+  if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+  document.getElementById('cam-video').srcObject=null;
+}
+
+// ── Home buttons ──────────────────────────────────────────────────────────────
+btnStart.addEventListener('click', async ()=>{
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  if(phase==='done') return;
+
+  if(phase==='idle'){
+    loadSettings(); currentRound=1;
+    phase='fighting'; remaining=roundSecs; warnedAt10=false;
+
+    if(camEnabled){
+      const ok = await ensureCamera();
+      if(ok) showCamScreen();
+    }
+
     updateDisplay(); startBell(); startTimer();
-    btnStart.textContent = 'Pause';
-    btnStart.classList.remove('paused');
-  } else if (interval) {
+    btnStart.textContent='Pause'; btnStart.classList.remove('paused');
+    document.getElementById('btn-cam-pause').innerHTML='&#9646;&#9646;';
+    document.getElementById('btn-cam-pause').classList.add('active');
+  } else if(interval){
     stopTimer();
-    btnStart.textContent = 'Resume';
-    btnStart.classList.add('paused');
+    btnStart.textContent='Resume'; btnStart.classList.add('paused');
+    document.getElementById('btn-cam-pause').innerHTML='&#9654;';
+    document.getElementById('btn-cam-pause').classList.remove('active');
   } else {
     startTimer();
-    btnStart.textContent = 'Pause';
-    btnStart.classList.remove('paused');
+    btnStart.textContent='Pause'; btnStart.classList.remove('paused');
+    document.getElementById('btn-cam-pause').innerHTML='&#9646;&#9646;';
+    document.getElementById('btn-cam-pause').classList.add('active');
   }
 });
 
-document.getElementById('btn-reset').addEventListener('click', () => {
+document.getElementById('btn-reset').addEventListener('click',()=>{
   stopTimer(); loadSettings();
-  phase = 'idle'; currentRound = 1;
-  remaining = roundSecs; warnedAt10 = false;
-  btnStart.textContent = 'Start';
-  btnStart.classList.remove('paused');
+  phase='idle'; currentRound=1; remaining=roundSecs; warnedAt10=false;
+  btnStart.textContent='Start'; btnStart.classList.remove('paused');
+  returnHome();
   updateDisplay();
 });
 
-['set-rounds','set-round-min','set-rest'].forEach(id => {
-  document.getElementById(id).addEventListener('change', () => {
-    if (phase === 'idle') { loadSettings(); remaining = roundSecs; updateDisplay(); }
+document.getElementById('btn-cam-toggle').addEventListener('click',()=>{
+  camEnabled=!camEnabled;
+  const btn=document.getElementById('btn-cam-toggle');
+  if(camEnabled){ btn.classList.add('on'); }
+  else { btn.classList.remove('on'); stopCameraStream(); }
+});
+
+['set-rounds','set-round-min','set-rest'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',()=>{
+    if(phase==='idle'){ loadSettings(); remaining=roundSecs; updateDisplay(); }
   });
 });
 
-// ── Camera ───────────────────────────────────────────────────────────────────
-const camWrap     = document.getElementById('camera-wrap');
-const camVideo    = document.getElementById('camera-video');
-const camError    = document.getElementById('camera-error');
-const btnCamClose = document.getElementById('btn-cam-close');
-const btnCam      = document.getElementById('btn-camera');
-let camStream = null;
-let camEnabled = false;
-
-async function startCamera() {
-  camWrap.classList.add('active');
-  try {
-    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true });
-    camVideo.srcObject = camStream;
-    camVideo.style.display = 'block';
-    camError.style.display = 'none';
-    camEnabled = true;
-    btnCam.classList.add('on');
-  } catch {
-    camVideo.style.display = 'none';
-    camError.style.display = 'block';
-  }
-}
-
-function stopCamera() {
-  stopRecording();
-  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
-  camVideo.srcObject = null;
-  camVideo.style.display = 'none';
-  camError.style.display = 'none';
-  camEnabled = false;
-  camWrap.classList.remove('active');
-  btnCam.classList.remove('on');
-}
-
-btnCam.addEventListener('click', () => {
-  if (camEnabled) { stopCamera(); } else { startCamera(); }
+// ── Cam screen buttons ────────────────────────────────────────────────────────
+document.getElementById('btn-home').addEventListener('click',()=>{
+  stopTimer();
+  btnStart.textContent='Resume'; btnStart.classList.add('paused');
+  returnHome();
 });
 
-btnCamClose.addEventListener('click', stopCamera);
+document.getElementById('btn-cam-pause').addEventListener('click',()=>{
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  const btn=document.getElementById('btn-cam-pause');
+  if(interval){
+    stopTimer();
+    btnStart.textContent='Resume'; btnStart.classList.add('paused');
+    btn.innerHTML='&#9654;'; btn.classList.remove('active');
+  } else if(phase!=='done'&&phase!=='idle'){
+    startTimer();
+    btnStart.textContent='Pause'; btnStart.classList.remove('paused');
+    btn.innerHTML='&#9646;&#9646;'; btn.classList.add('active');
+  }
+});
+
+document.getElementById('btn-cam-clips').addEventListener('click',()=>{
+  if(clips.length===0) return;
+  openReplay(clips.length-1);
+});
 
 // ── Recording ─────────────────────────────────────────────────────────────────
-const btnRec       = document.getElementById('btn-rec');
+const btnRec       = document.getElementById('btn-cam-rec');
 const recIndicator = document.getElementById('rec-indicator');
 const recTimeEl    = document.getElementById('rec-time');
-const recordingsList = document.getElementById('recordings-list');
 
-let mediaRecorder = null;
-let recChunks     = [];
-let recInterval   = null;
-let recSeconds    = 0;
-let recCount      = 0;
+let mediaRecorder=null, recChunks=[], recInterval=null, recSeconds=0;
+let clips=[]; // [{blob, mimeType, duration}]
 
-function startRecording() {
-  if (!camStream) return;
-  recChunks  = [];
-  recSeconds = 0;
+function startRecording(){
+  if(!camStream) return;
+  recChunks=[]; recSeconds=0;
+  const mime=['video/mp4','video/webm;codecs=vp9,opus','video/webm']
+    .find(t=>MediaRecorder.isTypeSupported(t))||'';
+  try { mediaRecorder=new MediaRecorder(camStream,mime?{mimeType:mime}:{}); }
+  catch { mediaRecorder=new MediaRecorder(camStream); }
 
-  const mimeType = ['video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'].find(
-    t => MediaRecorder.isTypeSupported(t)
-  ) || '';
-
-  try {
-    mediaRecorder = new MediaRecorder(camStream, mimeType ? { mimeType } : {});
-  } catch {
-    mediaRecorder = new MediaRecorder(camStream);
-  }
-
-  mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) recChunks.push(e.data); };
-  mediaRecorder.onstop = () => {
-    const blob = new Blob(recChunks, { type: mediaRecorder.mimeType || 'video/webm' });
-    const url  = URL.createObjectURL(blob);
-    const ext  = (mediaRecorder.mimeType || '').includes('mp4') ? 'mp4' : 'webm';
-    addRecordingEntry(url, ext);
+  mediaRecorder.ondataavailable=e=>{ if(e.data&&e.data.size>0) recChunks.push(e.data); };
+  mediaRecorder.onstop=()=>{
+    const blob=new Blob(recChunks,{type:mediaRecorder.mimeType||'video/webm'});
+    clips.push({blob, mimeType:mediaRecorder.mimeType||'video/webm', duration:recSeconds});
+    addClipToList(clips.length-1);
   };
-
   mediaRecorder.start(500);
   recIndicator.classList.add('active');
   btnRec.classList.add('recording');
-  btnRec.innerHTML = '&#9209;'; // stop symbol
-
-  recInterval = setInterval(() => {
-    recSeconds++;
-    recTimeEl.textContent = fmt(recSeconds);
-  }, 1000);
+  btnRec.innerHTML='&#9209;';
+  recInterval=setInterval(()=>{ recSeconds++; recTimeEl.textContent=fmt(recSeconds); },1000);
 }
 
-function stopRecording() {
-  if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+function stopRecording(){
+  if(!mediaRecorder||mediaRecorder.state==='inactive') return;
   mediaRecorder.stop();
-  clearInterval(recInterval);
-  recInterval = null;
+  clearInterval(recInterval); recInterval=null;
   recIndicator.classList.remove('active');
   btnRec.classList.remove('recording');
-  btnRec.innerHTML = '&#9210;'; // record symbol
-  recTimeEl.textContent = '0:00';
+  btnRec.innerHTML='&#9210;';
+  recTimeEl.textContent='0:00';
 }
 
-function addRecordingEntry(url, ext) {
-  recCount++;
-  recordingsList.classList.add('visible');
-  document.getElementById('recordings-header').classList.add('visible');
-  const item = document.createElement('div');
-  item.className = 'rec-item';
-  const label = document.createElement('span');
-  label.textContent = `Clip ${recCount}`;
-  const link = document.createElement('a');
-  link.href     = url;
-  link.download = `boxing-${recCount}.${ext}`;
-  link.textContent = '↓ Save';
-  item.append(label, link);
-  recordingsList.appendChild(item);
+btnRec.addEventListener('click',()=>{
+  if(!camStream) return;
+  if(mediaRecorder&&mediaRecorder.state==='recording') stopRecording();
+  else startRecording();
+});
+
+// ── Replay modal ──────────────────────────────────────────────────────────────
+const replayVideo    = document.getElementById('replay-video');
+const replayTitle    = document.getElementById('replay-title');
+const btnReplaySave  = document.getElementById('btn-replay-save');
+const clipsList      = document.getElementById('clips-list');
+let activeClipIdx    = -1;
+
+function addClipToList(idx){
+  const c=clips[idx];
+  const url=URL.createObjectURL(c.blob);
+  const item=document.createElement('div');
+  item.className='clip-item'; item.dataset.idx=idx;
+
+  // thumbnail via video seek
+  const thumb=document.createElement('video');
+  thumb.className='clip-thumb';
+  thumb.src=url; thumb.muted=true; thumb.playsInline=true;
+  thumb.currentTime=0.1;
+
+  const info=document.createElement('div'); info.className='clip-info';
+  const title=document.createElement('div'); title.className='clip-title';
+  title.textContent=`Clip ${idx+1}`;
+  const dur=document.createElement('div'); dur.className='clip-duration';
+  dur.textContent=fmt(c.duration);
+  info.append(title,dur);
+  item.append(thumb,info);
+  item.addEventListener('click',()=>openReplay(idx));
+  clipsList.appendChild(item);
 }
 
-btnRec.addEventListener('click', () => {
-  if (!camStream) return;
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    stopRecording();
-  } else {
-    startRecording();
+function openReplay(idx){
+  stopTimer();
+  returnHome();  // hide cam screen first
+  activeClipIdx=idx;
+  const c=clips[idx];
+  const url=URL.createObjectURL(c.blob);
+  replayVideo.src=url;
+  replayTitle.textContent=`Clip ${idx+1}`;
+  replayModal.classList.remove('hidden');
+  // highlight active clip
+  document.querySelectorAll('.clip-item').forEach((el,i)=>{
+    el.querySelector('.clip-title').classList.toggle('clip-playing',i===idx);
+  });
+}
+
+document.getElementById('btn-replay-back').addEventListener('click',()=>{
+  replayVideo.pause();
+  replayModal.classList.add('hidden');
+  if(phase!=='idle'&&phase!=='done'){
+    // return to cam screen if timer was running
+    showCamScreen();
   }
 });
 
-// ── Drag PiP ─────────────────────────────────────────────────────────────────
-(function makeDraggable(el) {
-  let ox = 0, oy = 0, sx = 0, sy = 0;
-  const header = el.querySelector('#camera-header');
+btnReplaySave.addEventListener('click', async ()=>{
+  if(activeClipIdx<0) return;
+  const c=clips[activeClipIdx];
+  const ext=c.mimeType.includes('mp4')?'mp4':'webm';
+  const filename=`boxing-clip-${activeClipIdx+1}.${ext}`;
+  const file=new File([c.blob],filename,{type:c.mimeType});
 
-  function dragStart(cx, cy) {
-    const rect = el.getBoundingClientRect();
-    ox = rect.left; oy = rect.top; sx = cx; sy = cy;
-    el.style.right = 'auto'; el.style.bottom = 'auto';
-    el.style.left = ox + 'px'; el.style.top = oy + 'px';
+  // Web Share API → iOS share sheet → Save Video to camera roll
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file],title:'Boxing Clip'}); return; }
+    catch(e){ if(e.name==='AbortError') return; }
   }
-  function dragMove(cx, cy) {
-    el.style.left = (ox + cx - sx) + 'px';
-    el.style.top  = (oy + cy - sy) + 'px';
-  }
+  // Fallback: download link
+  const url=URL.createObjectURL(c.blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+});
 
-  header.addEventListener('mousedown', e => {
-    dragStart(e.clientX, e.clientY);
-    const mm = e2 => dragMove(e2.clientX, e2.clientY);
-    const mu = () => { document.removeEventListener('mousemove', mm); document.removeEventListener('mouseup', mu); };
-    document.addEventListener('mousemove', mm);
-    document.addEventListener('mouseup', mu);
-  });
-
-  header.addEventListener('touchstart', e => {
-    dragStart(e.touches[0].clientX, e.touches[0].clientY);
-    const tm = e2 => dragMove(e2.touches[0].clientX, e2.touches[0].clientY);
-    const te = () => { document.removeEventListener('touchmove', tm); document.removeEventListener('touchend', te); };
-    document.addEventListener('touchmove', tm, { passive: true });
-    document.addEventListener('touchend', te);
-  }, { passive: true });
-})(camWrap);
+// ── Drag PiP not needed (cam is full screen) ──────────────────────────────────
 
 // ── Service Worker ────────────────────────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 
-// ── Init ─────────────────────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────────
 loadSettings();
-remaining = roundSecs;
+remaining=roundSecs;
 updateDisplay();
-camWrap.classList.add('active');
-startCamera();
+// auto-start camera stream in background so it's ready
+ensureCamera();
 </script>
 </body>
 </html>
