@@ -147,19 +147,6 @@
     border: 2px solid #333;
   }
 
-  #btn-camera {
-    background: #1a1a1a;
-    color: #aaa;
-    border: 2px solid #333;
-    font-size: 1.3rem;
-    padding: 14px 18px;
-    letter-spacing: 0;
-  }
-  #btn-camera.on {
-    border-color: #4cff72;
-    color: #4cff72;
-  }
-
   /* Settings */
   #settings {
     margin-top: clamp(20px, 4vh, 48px);
@@ -354,7 +341,6 @@
 <div class="controls">
   <button id="btn-start">Start</button>
   <button id="btn-reset">Reset</button>
-  <button id="btn-camera" title="Camera">&#128247;</button>
 </div>
 
 <div id="settings">
@@ -381,7 +367,7 @@
     <span id="cam-label">Camera</span>
     <div style="display:flex;align-items:center">
       <button id="btn-rec" title="Record">&#9210;</button>
-      <button id="btn-cam-close" title="Close">&#x2715;</button>
+      <button id="btn-cam-close" title="Disable camera">&#x2715;</button>
     </div>
   </div>
   <video id="camera-video" autoplay playsinline muted></video>
@@ -554,9 +540,9 @@ document.getElementById('btn-reset').addEventListener('click', () => {
 const camWrap     = document.getElementById('camera-wrap');
 const camVideo    = document.getElementById('camera-video');
 const camError    = document.getElementById('camera-error');
-const btnCam      = document.getElementById('btn-camera');
 const btnCamClose = document.getElementById('btn-cam-close');
 let camStream = null;
+let camEnabled = false;
 
 async function startCamera() {
   try {
@@ -564,6 +550,9 @@ async function startCamera() {
     camVideo.srcObject = camStream;
     camVideo.style.display = 'block';
     camError.style.display = 'none';
+    camEnabled = true;
+    btnCamClose.title = 'Disable camera';
+    btnCamClose.innerHTML = '&#x2715;';
   } catch {
     camVideo.style.display = 'none';
     camError.style.display = 'block';
@@ -574,19 +563,15 @@ function stopCamera() {
   stopRecording();
   if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
   camVideo.srcObject = null;
+  camVideo.style.display = 'none';
+  camEnabled = false;
+  btnCamClose.title = 'Enable camera';
+  btnCamClose.innerHTML = '&#9654;';
+  camError.style.display = 'none';
 }
 
-function toggleCamera() {
-  if (camWrap.classList.contains('active')) {
-    camWrap.classList.remove('active'); btnCam.classList.remove('on'); stopCamera();
-  } else {
-    camWrap.classList.add('active'); btnCam.classList.add('on'); startCamera();
-  }
-}
-
-btnCam.addEventListener('click', toggleCamera);
 btnCamClose.addEventListener('click', () => {
-  camWrap.classList.remove('active'); btnCam.classList.remove('on'); stopCamera();
+  if (camEnabled) { stopCamera(); } else { startCamera(); }
 });
 
 // ── Recording ─────────────────────────────────────────────────────────────────
@@ -713,6 +698,8 @@ if ('serviceWorker' in navigator) {
 loadSettings();
 remaining = roundSecs;
 updateDisplay();
+camWrap.classList.add('active');
+startCamera();
 </script>
 </body>
 </html>
