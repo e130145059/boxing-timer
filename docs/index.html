@@ -267,6 +267,88 @@
     color: #ff4c4c;
     letter-spacing: 1px;
   }
+
+  /* Recording indicator */
+  #rec-indicator {
+    display: none;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    color: #ff4c4c;
+    font-weight: 700;
+  }
+  #rec-indicator.active { display: flex; }
+  .rec-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #ff4c4c;
+    animation: blink 1s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.1} }
+
+  #btn-rec {
+    background: none;
+    border: none;
+    color: #555;
+    font-size: 1rem;
+    padding: 4px 8px;
+    cursor: pointer;
+    letter-spacing: 0;
+    min-height: 44px;
+    min-width: 44px;
+    transition: color 0.2s;
+  }
+  #btn-rec:hover { color: #ff4c4c; }
+  #btn-rec.recording { color: #ff4c4c; }
+
+  /* Recordings panel */
+  #recordings-panel {
+    position: fixed;
+    bottom: calc(var(--safe-bottom) + 24px);
+    left: calc(var(--safe-left) + 24px);
+    width: clamp(160px, 32vw, 220px);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 2px solid #333;
+    background: #111;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    display: none;
+    z-index: 99;
+  }
+  #recordings-panel.visible { display: block; }
+  #recordings-header {
+    padding: 8px 12px;
+    background: #1a1a1a;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #555;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+  }
+  #recordings-list { max-height: 180px; overflow-y: auto; }
+  .rec-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-top: 1px solid #222;
+    font-size: 0.7rem;
+    color: #aaa;
+    letter-spacing: 1px;
+  }
+  .rec-item a {
+    color: #4cff72;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    padding: 4px 8px;
+    border: 1px solid #4cff72;
+    border-radius: 6px;
+  }
 </style>
 </head>
 <body>
@@ -304,11 +386,21 @@
 <!-- Draggable camera PiP -->
 <div id="camera-wrap">
   <div id="camera-header">
-    <span>Camera</span>
-    <button id="btn-cam-close">&#x2715;</button>
+    <div id="rec-indicator"><div class="rec-dot"></div><span id="rec-time">0:00</span></div>
+    <span id="cam-label">Camera</span>
+    <div style="display:flex;align-items:center">
+      <button id="btn-rec" title="Record">&#9210;</button>
+      <button id="btn-cam-close" title="Close">&#x2715;</button>
+    </div>
   </div>
   <video id="camera-video" autoplay playsinline muted></video>
   <div id="camera-error">Camera not available</div>
+</div>
+
+<!-- Saved recordings -->
+<div id="recordings-panel">
+  <div id="recordings-header">Recordings</div>
+  <div id="recordings-list"></div>
 </div>
 
 <script>
@@ -481,7 +573,7 @@ let camStream = null;
 
 async function startCamera() {
   try {
-    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true });
     camVideo.srcObject = camStream;
     camVideo.style.display = 'block';
     camError.style.display = 'none';
@@ -492,6 +584,7 @@ async function startCamera() {
 }
 
 function stopCamera() {
+  stopRecording();
   if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
   camVideo.srcObject = null;
 }
@@ -507,6 +600,88 @@ function toggleCamera() {
 btnCam.addEventListener('click', toggleCamera);
 btnCamClose.addEventListener('click', () => {
   camWrap.classList.remove('active'); btnCam.classList.remove('on'); stopCamera();
+});
+
+// ── Recording ─────────────────────────────────────────────────────────────────
+const btnRec          = document.getElementById('btn-rec');
+const recIndicator    = document.getElementById('rec-indicator');
+const recTimeEl       = document.getElementById('rec-time');
+const recordingsPanel = document.getElementById('recordings-panel');
+const recordingsList  = document.getElementById('recordings-list');
+
+let mediaRecorder = null;
+let recChunks     = [];
+let recInterval   = null;
+let recSeconds    = 0;
+let recCount      = 0;
+
+function startRecording() {
+  if (!camStream) return;
+  recChunks  = [];
+  recSeconds = 0;
+
+  const mimeType = ['video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'].find(
+    t => MediaRecorder.isTypeSupported(t)
+  ) || '';
+
+  try {
+    mediaRecorder = new MediaRecorder(camStream, mimeType ? { mimeType } : {});
+  } catch {
+    mediaRecorder = new MediaRecorder(camStream);
+  }
+
+  mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) recChunks.push(e.data); };
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recChunks, { type: mediaRecorder.mimeType || 'video/webm' });
+    const url  = URL.createObjectURL(blob);
+    const ext  = (mediaRecorder.mimeType || '').includes('mp4') ? 'mp4' : 'webm';
+    addRecordingEntry(url, ext);
+  };
+
+  mediaRecorder.start(500);
+  recIndicator.classList.add('active');
+  btnRec.classList.add('recording');
+  btnRec.innerHTML = '&#9209;'; // stop symbol
+
+  recInterval = setInterval(() => {
+    recSeconds++;
+    recTimeEl.textContent = fmt(recSeconds);
+  }, 1000);
+}
+
+function stopRecording() {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+  mediaRecorder.stop();
+  clearInterval(recInterval);
+  recInterval = null;
+  recIndicator.classList.remove('active');
+  btnRec.classList.remove('recording');
+  btnRec.innerHTML = '&#9210;'; // record symbol
+  recTimeEl.textContent = '0:00';
+}
+
+function addRecordingEntry(url, ext) {
+  recCount++;
+  recordingsPanel.classList.add('visible');
+  const item = document.createElement('div');
+  item.className = 'rec-item';
+  const label = document.createElement('span');
+  label.textContent = `Clip ${recCount}`;
+  const link = document.createElement('a');
+  link.href     = url;
+  link.download = `boxing-${recCount}.${ext}`;
+  link.textContent = '↓ Save';
+  item.append(label, link);
+  recordingsList.appendChild(item);
+}
+
+btnRec.addEventListener('click', () => {
+  if (!camStream) return;
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    stopRecording();
+  } else {
+    startRecording();
+  }
 });
 
 // ── Drag PiP ─────────────────────────────────────────────────────────────────
