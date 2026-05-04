@@ -480,11 +480,17 @@ let camStream=null, camEnabled=true;
 
 async function ensureCamera() {
   if(camStream) return true;
+  // Try with audio first (needed for recording with sound).
+  // Fall back to video-only if mic is denied (common on iOS first visit).
   try {
     camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:true});
-    document.getElementById('cam-video').srcObject = camStream;
-    return true;
-  } catch { return false; }
+  } catch {
+    try {
+      camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+    } catch { return false; }
+  }
+  document.getElementById('cam-video').srcObject = camStream;
+  return true;
 }
 
 function showCamScreen() {
@@ -595,19 +601,40 @@ let clips=[]; // [{blob, mimeType, duration}]
 
 function startRecording(){
   if(!camStream) return;
+  if(typeof MediaRecorder==='undefined') return; // not supported
   recChunks=[]; recSeconds=0;
-  const mime=['video/mp4','video/webm;codecs=vp9,opus','video/webm']
-    .find(t=>MediaRecorder.isTypeSupported(t))||'';
-  try { mediaRecorder=new MediaRecorder(camStream,mime?{mimeType:mime}:{}); }
-  catch { mediaRecorder=new MediaRecorder(camStream); }
+
+  // iOS Safari only supports video/mp4; Chrome/Android prefer webm.
+  // Don't use isTypeSupported on iOS — it can lie. Try mp4 first, catch and retry.
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||
+               (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const mimeOrder = isIOS
+    ? ['video/mp4','']
+    : ['video/webm;codecs=vp9,opus','video/webm','video/mp4',''];
+
+  let created=false;
+  for(const mime of mimeOrder){
+    try {
+      mediaRecorder = mime
+        ? new MediaRecorder(camStream,{mimeType:mime})
+        : new MediaRecorder(camStream);
+      created=true; break;
+    } catch {}
+  }
+  if(!created) return;
 
   mediaRecorder.ondataavailable=e=>{ if(e.data&&e.data.size>0) recChunks.push(e.data); };
   mediaRecorder.onstop=()=>{
-    const blob=new Blob(recChunks,{type:mediaRecorder.mimeType||'video/webm'});
-    clips.push({blob, mimeType:mediaRecorder.mimeType||'video/webm', duration:recSeconds});
+    const mtype=mediaRecorder.mimeType||'video/mp4';
+    const blob=new Blob(recChunks,{type:mtype});
+    clips.push({blob, mimeType:mtype, duration:recSeconds});
     addClipToList(clips.length-1);
   };
-  mediaRecorder.start(500);
+
+  // iOS works better without a timeslice — collect all data at stop
+  if(isIOS) mediaRecorder.start();
+  else mediaRecorder.start(500);
+
   recIndicator.classList.add('active');
   btnRec.classList.add('recording');
   btnRec.innerHTML='&#9209;';
