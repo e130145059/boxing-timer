@@ -147,6 +147,16 @@
     border: 2px solid #333;
   }
 
+  #btn-camera {
+    background: #1a1a1a;
+    color: #aaa;
+    border: 2px solid #333;
+    font-size: 1.1rem;
+    padding: 14px 18px;
+    letter-spacing: 0;
+  }
+  #btn-camera.on { border-color: #4cff72; color: #4cff72; }
+
   /* Settings */
   #settings {
     margin-top: clamp(20px, 4vh, 48px);
@@ -237,6 +247,8 @@
   }
   #camera-header button:hover { color: #fff; }
 
+  #cam-video-wrap { position: relative; }
+
   #camera-video {
     width: 100%;
     display: block;
@@ -244,6 +256,29 @@
     background: #000;
     aspect-ratio: 4/3;
     object-fit: cover;
+  }
+
+  #cam-watermark {
+    position: absolute;
+    bottom: 10px;
+    left: 0; right: 0;
+    text-align: center;
+    pointer-events: none;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(1.4rem, 8vw, 2.2rem);
+    color: rgba(255,255,255,0.9);
+    text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8);
+    letter-spacing: -1px;
+    line-height: 1.1;
+  }
+  #cam-watermark .wm-round {
+    display: block;
+    font-size: 0.45em;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.75;
+    font-weight: 700;
   }
 
   #camera-error {
@@ -341,6 +376,7 @@
 <div class="controls">
   <button id="btn-start">Start</button>
   <button id="btn-reset">Reset</button>
+  <button id="btn-camera" class="on" title="Toggle camera">&#128247;</button>
 </div>
 
 <div id="settings">
@@ -370,7 +406,10 @@
       <button id="btn-cam-close" title="Disable camera">&#x2715;</button>
     </div>
   </div>
-  <video id="camera-video" autoplay playsinline muted></video>
+  <div id="cam-video-wrap">
+    <video id="camera-video" autoplay playsinline muted></video>
+    <div id="cam-watermark"><span class="wm-round">Ready</span>0:00</div>
+  </div>
   <div id="camera-error">Camera not available</div>
   <div id="recordings-header">Clips</div>
   <div id="recordings-list"></div>
@@ -439,10 +478,16 @@ function renderDots() {
 }
 
 function updateDisplay() {
-  clock.textContent   = fmt(remaining);
+  clock.textContent    = fmt(remaining);
   roundNum.textContent = currentRound;
   roundTot.textContent = totalRounds;
   renderDots();
+
+  const wm = document.getElementById('cam-watermark');
+  if (wm) {
+    const label = phase === 'fighting' ? `Round ${currentRound}` : phase === 'resting' ? 'Rest' : phase === 'done' ? 'Done' : 'Ready';
+    wm.innerHTML = `<span class="wm-round">${label}</span>${fmt(remaining)}`;
+  }
 
   clock.classList.remove('warning', 'rest');
   document.body.classList.remove('fighting', 'resting', 'warning');
@@ -541,18 +586,19 @@ const camWrap     = document.getElementById('camera-wrap');
 const camVideo    = document.getElementById('camera-video');
 const camError    = document.getElementById('camera-error');
 const btnCamClose = document.getElementById('btn-cam-close');
+const btnCam      = document.getElementById('btn-camera');
 let camStream = null;
 let camEnabled = false;
 
 async function startCamera() {
+  camWrap.classList.add('active');
   try {
     camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true });
     camVideo.srcObject = camStream;
     camVideo.style.display = 'block';
     camError.style.display = 'none';
     camEnabled = true;
-    btnCamClose.title = 'Disable camera';
-    btnCamClose.innerHTML = '&#x2715;';
+    btnCam.classList.add('on');
   } catch {
     camVideo.style.display = 'none';
     camError.style.display = 'block';
@@ -564,15 +610,17 @@ function stopCamera() {
   if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
   camVideo.srcObject = null;
   camVideo.style.display = 'none';
-  camEnabled = false;
-  btnCamClose.title = 'Enable camera';
-  btnCamClose.innerHTML = '&#9654;';
   camError.style.display = 'none';
+  camEnabled = false;
+  camWrap.classList.remove('active');
+  btnCam.classList.remove('on');
 }
 
-btnCamClose.addEventListener('click', () => {
+btnCam.addEventListener('click', () => {
   if (camEnabled) { stopCamera(); } else { startCamera(); }
 });
+
+btnCamClose.addEventListener('click', stopCamera);
 
 // ── Recording ─────────────────────────────────────────────────────────────────
 const btnRec       = document.getElementById('btn-rec');
